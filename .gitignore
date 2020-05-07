@@ -2,3 +2,4 @@ django_rest_api_logger.egg-info
 dist
 build
 .idea
+*.sh
