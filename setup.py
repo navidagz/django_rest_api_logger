@@ -8,8 +8,8 @@ README = (HERE / "README.md").read_text()
 
 setup(
     name="django-rest-api-logger",
-    version="0.1",
-    description="Log everything from you drf view",
+    version="0.2",
+    description="Log everything from your drf view",
     long_description=README,
     long_description_content_type="text/markdown",
     url="https://github.com/navidagz/django-rest-api-logger",

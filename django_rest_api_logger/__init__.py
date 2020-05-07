@@ -1,1 +1,1 @@
-from .logging import LoggingMixin
+from .logging import APILoggingMixin

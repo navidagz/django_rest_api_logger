@@ -21,7 +21,7 @@ if "console" in HANDLERS:
     logger.addHandler(logging.StreamHandler())
 
 
-class LoggingMixin:
+class APILoggingMixin:
     CLEANED_SUBSTITUTE = '****'
     log = dict()
     logging_methods = '__all__'
@@ -31,14 +31,14 @@ class LoggingMixin:
     def __init__(self, *args, **kwargs):
         assert isinstance(self.CLEANED_SUBSTITUTE, str), 'CLEANED_SUBSTITUTE must be a string.'
         assert APIView in self.__class__.mro(), "Super class should be inherited from APIView"
-        super(LoggingMixin, self).__init__(*args, **kwargs)
+        super(APILoggingMixin, self).__init__(*args, **kwargs)
 
     def initial(self, request, *args, **kwargs):
         self.requested_at = now()
         self.log['requested_at'] = str(self.requested_at)
         self.log['data'] = self._clean_data(request.body)
 
-        super(LoggingMixin, self).initial(request, *args, **kwargs)
+        super(APILoggingMixin, self).initial(request, *args, **kwargs)
 
         try:
             data = self.request.data.dict()
@@ -49,14 +49,14 @@ class LoggingMixin:
 
     def handle_exception(self, exc):
         try:
-            response = super(LoggingMixin, self).handle_exception(exc)
+            response = super(APILoggingMixin, self).handle_exception(exc)
             return response
         except Exception as e:
             self.log['errors'] = {num: line for num, line in enumerate(traceback.format_exc().split("\n"))}
 
     def finalize_response(self, request, response, *args, **kwargs):
         try:
-            response = super(LoggingMixin, self).finalize_response(request, response, *args, **kwargs)
+            response = super(APILoggingMixin, self).finalize_response(request, response, *args, **kwargs)
         except:
             response = None
         should_log = self._should_log if hasattr(self, '_should_log') else self.should_log
