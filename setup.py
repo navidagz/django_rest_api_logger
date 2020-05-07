@@ -28,10 +28,5 @@ setup(
         "django",
         "wheel",
         "djangorestframework"
-    ],
-    # entry_points={
-    #     "console_scripts": [
-    #         "django_rest_api_logger=django_rest_api_logger.__main__:main",
-    #     ]
-    # },
+    ]
 )
