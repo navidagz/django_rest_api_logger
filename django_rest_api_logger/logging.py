@@ -4,6 +4,7 @@ import logging
 import traceback
 
 from django.conf import settings
+from django.core.files.uploadedfile import UploadedFile
 from django.db import connection
 from django.utils.timezone import now
 from rest_framework.views import APIView
@@ -185,6 +186,8 @@ class APILoggingMixin:
                     value = ast.literal_eval(value)
                 except (ValueError, SyntaxError):
                     pass
+                if isinstance(value, UploadedFile):
+                    data[key] = value.name
                 if isinstance(value, list) or isinstance(value, dict):
                     data[key] = self._clean_data(value)
                 if key.lower() in self.SENSITIVE_FIELDS:
