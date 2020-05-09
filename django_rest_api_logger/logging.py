@@ -7,13 +7,19 @@ from django.conf import settings
 from django.core.files.uploadedfile import UploadedFile
 from django.db import connection
 from django.utils.timezone import now
+from pymongo import MongoClient
+from pymongo.errors import ServerSelectionTimeoutError
 from rest_framework.views import APIView
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(message)s", handlers=[])
 
-HANDLERS = getattr(settings, "DRF_LOGGER_HANDLER", ["console"])
+HANDLERS = getattr(settings, "DRF_LOGGER_HANDLER", [])
 LOGGING_FILE = getattr(settings, "DRF_LOGGER_FILE", "/tmp/rest_logger.log")
+MONGO_TIMEOUT = getattr(settings, "DRF_LOGGER_MONGO_TIMEOUT_MS", 5)
+MONGO_HOST = getattr(settings, "DRF_LOGGER_MONGO_HOST", None)
+MONGO_LOG_DB = getattr(settings, "DRF_LOGGER_MONGO_LOG_DB", "log")
+MONGO_LOG_COLLECTION = getattr(settings, "DRF_LOGGER_MONGO_LOG_COLLECTION", "logs")
 
 if "file" in HANDLERS:
     logger.addHandler(logging.FileHandler(filename=LOGGING_FILE))
@@ -21,17 +27,26 @@ if "file" in HANDLERS:
 if "console" in HANDLERS:
     logger.addHandler(logging.StreamHandler())
 
+if MONGO_HOST:
+    client = MongoClient(host=MONGO_HOST, serverSelectionTimeoutMS=MONGO_TIMEOUT)
+    try:
+        client.server_info()
+        log_db = client[MONGO_LOG_DB]
+    except ServerSelectionTimeoutError:
+        raise Exception("Can not connect to mongo db")
+
 
 class APILoggingMixin:
     CLEANED_SUBSTITUTE = '****'
-    log = dict()
-    logging_methods = '__all__'
+    LOGGING_METHODS = '__all__'
     SENSITIVE_FIELDS = {'api', 'token', 'key', 'secret', 'password', 'signature', "confirm_password"}
-    requested_at = None
 
     def __init__(self, *args, **kwargs):
         assert isinstance(self.CLEANED_SUBSTITUTE, str), 'CLEANED_SUBSTITUTE must be a string.'
         assert APIView in self.__class__.mro(), "Super class should be inherited from APIView"
+
+        self.requested_at = None
+        self.log = dict()
         super(APILoggingMixin, self).__init__(*args, **kwargs)
 
     def initial(self, request, *args, **kwargs):
@@ -123,7 +138,14 @@ class APILoggingMixin:
         return response
 
     def handle_log(self):
-        logger.info(self.log)
+        if MONGO_HOST:
+            if "_id" in self.log.keys():
+                # Handle duplicate bodies
+                self.log.pop("_id", None)
+            log_db[MONGO_LOG_COLLECTION].insert(self.log)
+
+        if logger.handlers:
+            logger.info(self.log)
 
     @staticmethod
     def _get_ip_address(request):
@@ -168,7 +190,7 @@ class APILoggingMixin:
         return max(response_ms, 0)
 
     def should_log(self, request, response):
-        return self.logging_methods == '__all__' or request.method in self.logging_methods
+        return self.LOGGING_METHODS == '__all__' or request.method in self.LOGGING_METHODS
 
     def _clean_data(self, data):
         if isinstance(data, bytes):

@@ -8,7 +8,7 @@ README = (HERE / "README.md").read_text()
 
 setup(
     name="django-rest-api-logger",
-    version="0.3",
+    version="0.4",
     description="Log everything from your drf view",
     long_description=README,
     long_description_content_type="text/markdown",
@@ -25,6 +25,7 @@ setup(
     install_requires=[
         "django",
         "wheel",
-        "djangorestframework"
+        "djangorestframework",
+        "pymongo"
     ]
 )
