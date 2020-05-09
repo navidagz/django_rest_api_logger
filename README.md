@@ -1,6 +1,6 @@
 ### Django REST API Logger
 
-> Mixin which captures all needed data from API
+> Mixin which logs all needed data from API
 
 Just import `APILoggingMixin` and put it in first base class of your API and it'll do the rest
 
