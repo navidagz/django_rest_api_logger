@@ -1,13 +1,3 @@
-"""
-Settnings:
-    DRF_LOGGER_CUSTOM_HANDLER = False
-    DRF_LOGGER_HANDLER = ["file", "console"]
-    DRF_LOGGER_FILE = "/tmp/custom_logger.log"
-    DRF_LOGGER_MONGO_TIMEOUT_MS = 10
-    DRF_LOGGER_MONGO_HOST = "mongodb://admin:test_password@0.0.0.0:27017/"
-    DRF_LOGGER_MONGO_LOG_DB = "log1"
-    DRF_LOGGER_MONGO_LOG_COLLECTION = "logs"
-"""
 import ast
 import json
 import traceback
