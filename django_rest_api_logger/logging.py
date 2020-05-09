@@ -1,41 +1,15 @@
 import ast
 import json
-import logging
 import traceback
 
-from django.conf import settings
 from django.core.files.uploadedfile import UploadedFile
 from django.db import connection
 from django.utils.timezone import now
-
 from rest_framework.views import APIView
 
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO, format="%(message)s", handlers=[])
-
-HANDLERS = getattr(settings, "DRF_LOGGER_HANDLER", [])
-LOGGING_FILE = getattr(settings, "DRF_LOGGER_FILE", "/tmp/rest_logger.log")
-MONGO_TIMEOUT = getattr(settings, "DRF_LOGGER_MONGO_TIMEOUT_MS", 5)
-MONGO_HOST = getattr(settings, "DRF_LOGGER_MONGO_HOST", None)
-MONGO_LOG_DB = getattr(settings, "DRF_LOGGER_MONGO_LOG_DB", "log")
-MONGO_LOG_COLLECTION = getattr(settings, "DRF_LOGGER_MONGO_LOG_COLLECTION", "logs")
-
-if "file" in HANDLERS:
-    logger.addHandler(logging.FileHandler(filename=LOGGING_FILE))
-
-if "console" in HANDLERS:
-    logger.addHandler(logging.StreamHandler())
-
-if MONGO_HOST:
-    from pymongo import MongoClient
-    from pymongo.errors import ServerSelectionTimeoutError
-
-    client = MongoClient(host=MONGO_HOST, serverSelectionTimeoutMS=MONGO_TIMEOUT)
-    try:
-        client.server_info()
-        log_db = client[MONGO_LOG_DB]
-    except ServerSelectionTimeoutError:
-        raise Exception("Can not connect to mongo db")
+from .logger import logger
+from .mongo_config import MONGO_HOST, MONGO_LOG_COLLECTION, log_db
+from .utils import get_token, get_user, get_ip_address, get_response_ms
 
 
 class APILoggingMixin:
@@ -49,6 +23,7 @@ class APILoggingMixin:
 
         self.requested_at = None
         self.log = dict()
+
         super(APILoggingMixin, self).__init__(*args, **kwargs)
 
     def initial(self, request, *args, **kwargs):
@@ -77,18 +52,18 @@ class APILoggingMixin:
             response = super(APILoggingMixin, self).finalize_response(request, response, *args, **kwargs)
         except:
             response = None
+
         should_log = self._should_log if hasattr(self, '_should_log') else self.should_log
 
         if should_log(request, response):
-            app = ""
             try:
                 app = str(self._get_view_name(request)).split('.')[2]
             except:
-                pass
+                app = ""
 
             self.log.update(
                 {
-                    'remote_addr': self._get_ip_address(request),
+                    'remote_addr': get_ip_address(request),
                     'view': self._get_view_name(request),
                     'app': app,
                     'view_method': self._get_view_method(request),
@@ -96,9 +71,9 @@ class APILoggingMixin:
                     'host': request.get_host(),
                     'method': request.method,
                     'query_params': self._clean_data(request.query_params.dict()),
-                    'user': self._get_user(request),
-                    'response_ms': self._get_response_ms(),
-                    'token': self._get_token(request)
+                    'user': get_user(request),
+                    'response_ms': get_response_ms(self.requested_at),
+                    'token': get_token(request)
                 }
             )
 
@@ -124,7 +99,7 @@ class APILoggingMixin:
                         connection.set_rollback(False)
                         self.handle_log()
                 except Exception:
-                    logger.exception('Logging API call raise exception!')
+                    logger.info('Logging API call raise exception!')
             else:
                 self.log.update(
                     {
@@ -135,26 +110,22 @@ class APILoggingMixin:
                 try:
                     self.handle_log()
                 except Exception:
-                    logger.exception('Logging API call raise exception!')
+                    logger.info('Logging API call raise exception!')
 
         return response
 
     def handle_log(self):
-        if MONGO_HOST:
-            if "_id" in self.log.keys():
-                # Handle duplicate bodies
-                self.log.pop("_id", None)
-            log_db[MONGO_LOG_COLLECTION].insert(self.log)
+        try:
+            if MONGO_HOST:
+                if "_id" in self.log.keys():
+                    # Handle duplicate records
+                    self.log.pop("_id", None)
+                log_db[MONGO_LOG_COLLECTION].insert(self.log)
 
-        if logger.handlers:
-            logger.info(self.log)
-
-    @staticmethod
-    def _get_ip_address(request):
-        ip_addr = request.META.get("HTTP_X_FORWARDED_FOR", None)
-        if ip_addr:
-            return ip_addr.split(",")[0].strip()
-        return request.META.get("REMOTE_ADDR", "")
+            if logger.handlers:
+                logger.info(self.log)
+        except Exception as e:
+            logger.info("ERROR: {}".format(e.args))
 
     def _get_view_name(self, request):
         method = request.method.lower()
@@ -171,37 +142,17 @@ class APILoggingMixin:
             return self.action if self.action else None
         return request.method.lower()
 
-    @staticmethod
-    def _get_token(request):
-        try:
-            auth = request.META.get('HTTP_AUTHORIZATION', b'')
-            auth_header = auth.encode('iso-8859-1')
-            if not auth_header:
-                return None
-            return auth_header[1].decode('utf-8')
-        except:
-            return None
-
-    @staticmethod
-    def _get_user(request):
-        return request.user.__str__()
-
-    def _get_response_ms(self):
-        response_timedelta = now() - self.requested_at
-        response_ms = int(response_timedelta.total_seconds() * 1000)
-        return max(response_ms, 0)
-
-    def should_log(self, request, response):
+    def should_log(self, request):
         return self.LOGGING_METHODS == '__all__' or request.method in self.LOGGING_METHODS
 
     def _clean_data(self, data):
         if isinstance(data, bytes):
             data: bytes = data.decode(errors='replace')
-
-        if isinstance(data, list):
+        elif isinstance(data, list):
             return [self._clean_data(d) for d in data]
-        if isinstance(data, dict):
+        elif isinstance(data, dict):
             data: dict = dict(data)
+
             if self.SENSITIVE_FIELDS:
                 self.SENSITIVE_FIELDS = self.SENSITIVE_FIELDS | {field.lower() for field in self.SENSITIVE_FIELDS}
 
@@ -210,10 +161,12 @@ class APILoggingMixin:
                     value = ast.literal_eval(value)
                 except (ValueError, SyntaxError):
                     pass
-                if isinstance(value, UploadedFile):
-                    data[key] = value.name
+
                 if isinstance(value, list) or isinstance(value, dict):
                     data[key] = self._clean_data(value)
+                elif isinstance(value, UploadedFile):
+                    data[key] = value.name
+
                 if key.lower() in self.SENSITIVE_FIELDS:
                     data[key] = self.CLEANED_SUBSTITUTE
         return data
