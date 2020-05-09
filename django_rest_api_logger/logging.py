@@ -7,9 +7,12 @@ from django.db import connection
 from django.utils.timezone import now
 from rest_framework.views import APIView
 
-from .logger import logger
-from .mongo_config import MONGO_HOST, MONGO_LOG_COLLECTION, log_db
 from .utils import get_token, get_user, get_ip_address, get_response_ms
+
+CUSTOM_HANDLER = getattr(settings, "DRF_LOGGER_CUSTOM_HANDLER", False)
+if not CUSTOM_HANDLER:
+    from .logger import logger
+    from .mongo_config import MONGO_HOST, MONGO_LOG_COLLECTION, log_db
 
 
 class APILoggingMixin:
@@ -55,17 +58,12 @@ class APILoggingMixin:
 
         should_log = self._should_log if hasattr(self, '_should_log') else self.should_log
 
-        if should_log(request, response):
-            try:
-                app = str(self._get_view_name(request)).split('.')[2]
-            except:
-                app = ""
-
+        if should_log(request):
             self.log.update(
                 {
                     'remote_addr': get_ip_address(request),
                     'view': self._get_view_name(request),
-                    'app': app,
+                    'app': str(self._get_view_name(request)),
                     'view_method': self._get_view_method(request),
                     'path': request.path,
                     'host': request.get_host(),
@@ -99,7 +97,7 @@ class APILoggingMixin:
                         connection.set_rollback(False)
                         self.handle_log()
                 except Exception:
-                    logger.info('Logging API call raise exception!')
+                    print('Logging API call raise exception!')
             else:
                 self.log.update(
                     {
@@ -110,31 +108,35 @@ class APILoggingMixin:
                 try:
                     self.handle_log()
                 except Exception:
-                    logger.info('Logging API call raise exception!')
+                    print('Logging API call raise exception!')
 
         return response
 
     def handle_log(self):
         try:
-            if MONGO_HOST:
-                if "_id" in self.log.keys():
-                    # Handle duplicate records
-                    self.log.pop("_id", None)
-                log_db[MONGO_LOG_COLLECTION].insert(self.log)
+            if not CUSTOM_HANDLER:
+                if MONGO_HOST:
+                    if "_id" in self.log.keys():
+                        # Handle duplicate records
+                        self.log.pop("_id", None)
+                    log_db[MONGO_LOG_COLLECTION].insert(self.log)
 
-            if logger.handlers:
-                logger.info(self.log)
+                if logger.handlers:
+                    logger.info(self.log)
+            else:
+                raise NotImplementedError("handle_log should be implemented")
         except Exception as e:
-            logger.info("ERROR: {}".format(e.args))
+            print("ERROR: {}".format(e.args))
 
     def _get_view_name(self, request):
-        method = request.method.lower()
         try:
-            attributes = getattr(self, method)
-            view_name = (type(attributes.__self__).__module__ + '.' +
-                         type(attributes.__self__).__name__)
-            return view_name
-        except AttributeError:
+            method = request.method.lower()
+            if hasattr(self, method):
+                attributes = getattr(self, method)
+                view_name = (type(attributes.__self__).__module__ + '.' +
+                             type(attributes.__self__).__name__)
+                return view_name
+        except:
             return None
 
     def _get_view_method(self, request):
