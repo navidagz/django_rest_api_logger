@@ -23,9 +23,9 @@ setup(
     ],
     packages=["django_rest_api_logger"],
     install_requires=[
+        "pymongo",
         "django",
         "wheel",
         "djangorestframework",
-        "pymongo"
     ]
 )

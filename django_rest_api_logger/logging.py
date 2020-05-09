@@ -7,8 +7,7 @@ from django.conf import settings
 from django.core.files.uploadedfile import UploadedFile
 from django.db import connection
 from django.utils.timezone import now
-from pymongo import MongoClient
-from pymongo.errors import ServerSelectionTimeoutError
+
 from rest_framework.views import APIView
 
 logger = logging.getLogger(__name__)
@@ -28,6 +27,9 @@ if "console" in HANDLERS:
     logger.addHandler(logging.StreamHandler())
 
 if MONGO_HOST:
+    from pymongo import MongoClient
+    from pymongo.errors import ServerSelectionTimeoutError
+
     client = MongoClient(host=MONGO_HOST, serverSelectionTimeoutMS=MONGO_TIMEOUT)
     try:
         client.server_info()
