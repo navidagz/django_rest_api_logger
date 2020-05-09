@@ -1,7 +1,18 @@
+"""
+Settnings:
+    DRF_LOGGER_CUSTOM_HANDLER = False
+    DRF_LOGGER_HANDLER = ["file", "console"]
+    DRF_LOGGER_FILE = "/tmp/custom_logger.log"
+    DRF_LOGGER_MONGO_TIMEOUT_MS = 10
+    DRF_LOGGER_MONGO_HOST = "mongodb://admin:test_password@0.0.0.0:27017/"
+    DRF_LOGGER_MONGO_LOG_DB = "log1"
+    DRF_LOGGER_MONGO_LOG_COLLECTION = "logs"
+"""
 import ast
 import json
 import traceback
 
+from django.conf import settings
 from django.core.files.uploadedfile import UploadedFile
 from django.db import connection
 from django.utils.timezone import now
@@ -113,12 +124,13 @@ class APILoggingMixin:
         return response
 
     def handle_log(self):
+        if "_id" in self.log.keys():
+            # Handle duplicate records
+            self.log.pop("_id", None)
+
         try:
             if not CUSTOM_HANDLER:
                 if MONGO_HOST:
-                    if "_id" in self.log.keys():
-                        # Handle duplicate records
-                        self.log.pop("_id", None)
                     log_db[MONGO_LOG_COLLECTION].insert(self.log)
 
                 if logger.handlers:
