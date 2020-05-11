@@ -118,17 +118,17 @@ class APILoggingMixin:
             # Handle duplicate records
             self.log.pop("_id", None)
 
-        try:
-            if not CUSTOM_HANDLER:
+        if not CUSTOM_HANDLER:
+            try:
                 if MONGO_HOST:
                     log_db[MONGO_LOG_COLLECTION].insert(self.log)
 
                 if logger.handlers:
                     logger.info(self.log)
-            else:
-                raise NotImplementedError("handle_log should be implemented")
-        except Exception as e:
-            print("ERROR: {}".format(e.args))
+            except Exception as e:
+                print("ERROR: {}".format(e.args))
+        else:
+            raise NotImplementedError("handle_log should be implemented")
 
     def _get_view_name(self, request):
         try:
