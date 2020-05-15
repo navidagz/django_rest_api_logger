@@ -82,10 +82,15 @@ class APILoggingMixin:
                 else:
                     rendered_content = response.getvalue()
 
+                if not rendered_content:
+                    cleaned_response = None
+                else:
+                    cleaned_response = self._clean_data(json.loads(rendered_content.decode()))
+
                 self.log.update(
                     {
                         'status_code': response.status_code,
-                        'response': self._clean_data(json.loads(rendered_content.decode()))
+                        'response': cleaned_response
                     }
                 )
                 try:
