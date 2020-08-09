@@ -8,7 +8,7 @@ README = (HERE / "README.md").read_text()
 
 setup(
     name="django-rest-api-logger",
-    version="0.2.1",
+    version="0.3.1",
     description="Log everything from your DRF view",
     long_description=README,
     long_description_content_type="text/markdown",
@@ -27,5 +27,7 @@ setup(
         "django",
         "wheel",
         "djangorestframework",
+        'elasticsearch',
+        'certifi'
     ]
 )

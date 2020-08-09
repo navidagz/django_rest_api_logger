@@ -33,7 +33,24 @@ class ProductListAPI(APILoggingMixin, OtherMixinsOrClass):
     # Make sure directory exists  
     DRF_LOGGER_FILE = "/tmp/custom_logger.log"
     ```
-      
+ 
+- ##### Elasticsearch
+    ```
+    DRF_LOGGER_ELASTICSEARCH_ENABLED = True
+  
+    # Elasticsearch Hosts
+    DRF_LOGGER_ELASTICSEARCH_HOSTS = ["localhost:9200"]
+    
+    # Elasticsearch Index
+    DRF_LOGGER_ELASTICSEARCH_INDEX = "django_rest_api_logger"
+  
+    # Elasticsearch Auth
+    DRF_LOGGER_ELASTICSEARCH_AUTH = ('user', 'secret') # Or None
+    
+    # Elasticsearch SSL
+    DRF_LOGGER_ELASTICSEARCH_SSL = False
+    ```
+
 - ##### Mongo Log <br/>
     ```
     # Mongo Host

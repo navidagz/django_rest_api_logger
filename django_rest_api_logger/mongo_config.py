@@ -1,3 +1,5 @@
+from django.core.exceptions import ImproperlyConfigured
+
 from django.conf import settings
 
 MONGO_TIMEOUT = getattr(settings, "DRF_LOGGER_MONGO_TIMEOUT_MS", 5)
@@ -15,4 +17,4 @@ if MONGO_HOST:
         client.server_info()
         log_db = client[MONGO_LOG_DB]
     except ServerSelectionTimeoutError:
-        raise Exception("Can not connect to mongo db")
+        raise ImproperlyConfigured("Django rest api logger - Can not connect to mongo db")

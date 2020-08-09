@@ -154,6 +154,12 @@ class APILoggingMixin:
     def should_log(self, request):
         return self.LOGGING_METHODS == '__all__' or request.method in self.LOGGING_METHODS
 
+    def log_to_es(self):
+        if getattr(self, "log", None):
+            if "status_code" in self.log.keys():
+                from .elasticsearch import send_to_elasticsearch
+                send_to_elasticsearch(self.requested_at, self.log)
+
     def _clean_data(self, data):
         if isinstance(data, bytes):
             data: bytes = data.decode(errors='replace')
