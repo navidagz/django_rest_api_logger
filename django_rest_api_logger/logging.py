@@ -11,6 +11,8 @@ from rest_framework.views import APIView
 from .utils import get_token, get_user, get_ip_address, get_response_ms
 
 CUSTOM_HANDLER = getattr(settings, "DRF_LOGGER_CUSTOM_HANDLER", False)
+ELASTICSEARCH_ENABLED = getattr(settings, "DRF_LOGGER_ELASTICSEARCH_ENABLED", False)
+
 if not CUSTOM_HANDLER:
     from .logger import logger
     from .mongo_config import MONGO_HOST, MONGO_LOG_COLLECTION, log_db
@@ -155,7 +157,7 @@ class APILoggingMixin:
         return self.LOGGING_METHODS == '__all__' or request.method in self.LOGGING_METHODS
 
     def log_to_es(self):
-        if getattr(self, "log", None):
+        if ELASTICSEARCH_ENABLED and getattr(self, "log", False):
             if "status_code" in self.log.keys():
                 from .elasticsearch import send_to_elasticsearch
                 send_to_elasticsearch(self.requested_at, self.log)
