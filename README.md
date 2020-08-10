@@ -15,7 +15,7 @@ The package is available on [PyPI](https://pypi.org/project/django-rest-api-logg
 
 ### How to use
 > IMPORTANT: Don't forget to put it in the first base class
-```
+```python
 class ProductListAPI(APILoggingMixin, OtherMixinsOrClass):
     ...
 ```
@@ -24,7 +24,7 @@ class ProductListAPI(APILoggingMixin, OtherMixinsOrClass):
 #### Modes
 > Put these variables in your django settings file
 - ##### Native Logger <br/>
-    ```
+    ```python
     # file ------> Writes logs to file 
     # console ---> Prints logs in console
     DRF_LOGGER_HANDLER = ["file", "console"]
@@ -35,7 +35,7 @@ class ProductListAPI(APILoggingMixin, OtherMixinsOrClass):
     ```
  
 - ##### Elasticsearch
-    ```
+    ```python
     DRF_LOGGER_ELASTICSEARCH_ENABLED = True
   
     # Elasticsearch Hosts
@@ -52,7 +52,7 @@ class ProductListAPI(APILoggingMixin, OtherMixinsOrClass):
     ```
 
 - ##### Mongo Log <br/>
-    ```
+    ```python
     # Mongo Host
     DRF_LOGGER_MONGO_HOST = "mongodb://username:password@localhost:27017/"
        
@@ -67,7 +67,7 @@ class ProductListAPI(APILoggingMixin, OtherMixinsOrClass):
     ```
    
 - ##### Custom
-    ```
+    ```python
     # If DRF_LOGGER_CUSTOM_HANDLER is set to false then aboves modes won't work
     # You have to override `handle_log` function in order to implement your own handler
     DRF_LOGGER_CUSTOM_HANDLER = False
